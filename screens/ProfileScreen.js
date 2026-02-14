@@ -1,55 +1,155 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, Alert } from 'react-native';
+// screens/ProfileScreen.js
+import React, { useEffect, useState, useContext } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  Pressable,
+  StyleSheet,
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
 import { supabase } from '../supabaseClient';
+import { RoleContext } from '../context/RoleContext';
 
 export default function ProfileScreen({ navigation }) {
-  const [user, setUser] = useState(null);
+  const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [editMode, setEditMode] = useState(false);
+
+  const { role, setRole } = useContext(RoleContext);
 
   useEffect(() => {
-    const getUser = async () => {
-      const { data, error } = await supabase.auth.getUser();
-      if (error) {
-        console.error(error);
-        return;
+    const fetchProfile = async () => {
+      try {
+        setLoading(true);
+        const { data: authData } = await supabase.auth.getUser();
+        const user = authData?.user;
+        if (!user) return;
+
+        setEmail(user.email || '');
+
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('name, phone, role')
+          .eq('id', user.id)
+          .single();
+
+        if (error) throw error;
+        if (data) {
+          setName(data.name || '');
+          setPhone(data.phone || '');
+          if (data.role && data.role !== role) setRole(data.role);
+        }
+      } catch (err) {
+        console.log('Profile fetch error:', err.message);
+      } finally {
+        setLoading(false);
       }
-      setUser(data.user);
     };
-    getUser();
+
+    fetchProfile();
   }, []);
+
+  const updateProfile = async () => {
+    try {
+      setLoading(true);
+      const { data: authData } = await supabase.auth.getUser();
+      const user = authData?.user;
+      if (!user) return;
+
+      const { error } = await supabase
+        .from('profiles')
+        .upsert({ id: user.id, name, phone, role });
+
+      if (error) Alert.alert('Error', error.message);
+      else {
+        Alert.alert('Success', 'Profile updated!');
+        setEditMode(false);
+      }
+    } catch (err) {
+      Alert.alert('Error', err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const switchRole = () => {
+    setRole(prev => (prev === 'donor' ? 'receiver' : 'donor'));
+  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    Alert.alert('Logged out');
     navigation.replace('Login');
   };
 
+  if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color="#22c55e" />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Profile</Text>
+      <Text style={styles.title}>My Profile</Text>
 
-      {user ? (
-        <>
-          <Text style={styles.infoText}>
-            👤 {user.user_metadata?.name || 'User'}
-          </Text>
-          <Text style={styles.emailText}>{user.email}</Text>
-        </>
+      <Text style={styles.label}>Email</Text>
+      <Text style={styles.value}>{email || 'Not available'}</Text>
+
+      <Text style={styles.label}>Name</Text>
+      {editMode ? (
+        <TextInput style={styles.input} value={name} onChangeText={setName} />
       ) : (
-        <Text>Loading user info...</Text>
+        <Text style={styles.value}>{name || 'Not added'}</Text>
       )}
 
-      <Pressable style={styles.button} onPress={handleLogout}>
-        <Text style={styles.buttonText}>Logout</Text>
+      <Text style={styles.label}>Phone</Text>
+      {editMode ? (
+        <TextInput style={styles.input} value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+      ) : (
+        <Text style={styles.value}>{phone || 'Not added'}</Text>
+      )}
+
+      <Text style={styles.label}>Current Role</Text>
+      <Text style={styles.value}>{role === 'donor' ? 'Donor 🟢' : 'Receiver 🔵'}</Text>
+
+      {editMode && (
+        <Pressable style={styles.switchButton} onPress={switchRole}>
+          <Text style={styles.switchText}>Switch to {role === 'donor' ? 'Receiver' : 'Donor'}</Text>
+        </Pressable>
+      )}
+
+      {editMode ? (
+        <Pressable style={styles.button} onPress={updateProfile}>
+          <Text style={styles.buttonText}>Save Changes</Text>
+        </Pressable>
+      ) : (
+        <Pressable style={[styles.button, { backgroundColor: '#3b82f6' }]} onPress={() => setEditMode(true)}>
+          <Text style={styles.buttonText}>Edit Profile</Text>
+        </Pressable>
+      )}
+
+      <Pressable style={styles.logoutButton} onPress={handleLogout}>
+        <Text style={styles.logoutText}>Logout</Text>
       </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
-  title: { fontSize: 26, fontWeight: 'bold', marginBottom: 20 },
-  infoText: { fontSize: 18, marginBottom: 5 },
-  emailText: { fontSize: 16, color: '#555', marginBottom: 30 },
-  button: { backgroundColor: 'red', padding: 12, borderRadius: 8 },
+  container: { flex: 1, padding: 20, backgroundColor: '#fff' },
+  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 20, color: '#22c55e' },
+  label: { fontWeight: '600', marginTop: 15 },
+  value: { marginTop: 5, fontSize: 16, color: '#374151' },
+  input: { borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 12, marginTop: 5 },
+  switchButton: { marginTop: 10, padding: 10, borderRadius: 6, backgroundColor: '#facc15', alignItems: 'center' },
+  switchText: { fontWeight: 'bold' },
+  button: { backgroundColor: '#22c55e', padding: 14, borderRadius: 8, marginTop: 25, alignItems: 'center' },
   buttonText: { color: '#fff', fontWeight: 'bold' },
+  logoutButton: { marginTop: 30, alignItems: 'center' },
+  logoutText: { color: 'red', fontWeight: 'bold' },
 });

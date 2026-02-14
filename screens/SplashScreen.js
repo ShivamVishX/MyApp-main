@@ -1,23 +1,47 @@
-import React, { useEffect } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+// screens/SplashScreen.js
+import React, { useEffect, useContext } from 'react';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { supabase } from '../supabaseClient';
+import { RoleContext } from '../context/RoleContext';
 
 export default function SplashScreen({ navigation }) {
+  const { role, setRole } = useContext(RoleContext);
+
   useEffect(() => {
-    const timer = setTimeout(() => {
-      navigation.replace('Login');
-    }, 2000);
-    return () => clearTimeout(timer);
+    const checkAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        // No logged in user → go to Login
+        navigation.replace('Login');
+        return;
+      }
+
+      // Fetch role if not set
+      if (!role) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+
+        if (data?.role) setRole(data.role);
+      }
+
+      // Navigate to TabsSwitcher
+      navigation.replace('Tabs');
+    };
+
+    checkAuth();
   }, []);
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>🍲 Food Sharing App</Text>
-      <ActivityIndicator size="large" color="#22c55e" style={{ marginTop: 20 }} />
+      <ActivityIndicator size="large" color="#22c55e" />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' },
-  title: { fontSize: 24, fontWeight: 'bold', color: '#22c55e' },
+  container: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 });
