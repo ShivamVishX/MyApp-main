@@ -8,8 +8,12 @@ import {
   Alert,
   ActivityIndicator,
   ScrollView,
+  PermissionsAndroid,
+  Platform,
 } from 'react-native';
-import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
+import MapView, { Marker } from 'react-native-maps';
+import Geolocation from 'react-native-geolocation-service';
+import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { supabase } from '../supabaseClient';
 
 export default function AddFoodScreen({ navigation }) {
@@ -19,6 +23,57 @@ export default function AddFoodScreen({ navigation }) {
   const [location, setLocation] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  /* ================= LOCATION PERMISSION ================= */
+  const requestLocationPermission = async () => {
+    if (Platform.OS !== 'android') return true;
+
+    const granted = await PermissionsAndroid.request(
+      PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+      {
+        title: 'Location Permission',
+        message: 'App needs your location to share food',
+        buttonPositive: 'OK',
+      }
+    );
+
+    return granted === PermissionsAndroid.RESULTS.GRANTED;
+  };
+
+  /* ================= GET CURRENT LOCATION ================= */
+  const getCurrentLocation = async () => {
+    const hasPermission = await requestLocationPermission();
+    if (!hasPermission) {
+      Alert.alert('Permission denied', 'Location permission required');
+      return;
+    }
+
+    Geolocation.getCurrentPosition(
+      position => {
+        const coords = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        };
+        setLocation(coords);
+        setAddress('Current Location');
+      },
+      error => {
+        console.log(error);
+        Alert.alert(
+          'Location Error',
+          `${error.code}: ${error.message}\n\nPlease turn ON GPS & High Accuracy`
+        );
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 30000,              // 🔥 increased
+        maximumAge: 0,
+        forceRequestLocation: true,  // 🔥 CRITICAL
+        showLocationDialog: true,    // 🔥 forces GPS ON popup
+      }
+    );
+  };
+
+  /* ================= SUBMIT ================= */
   const handleSubmit = async () => {
     if (!foodname || !description || !address || !location) {
       Alert.alert('Error', 'All fields including location are required!');
@@ -28,16 +83,11 @@ export default function AddFoodScreen({ navigation }) {
     try {
       setLoading(true);
 
-      const { data: userData, error: userError } =
-        await supabase.auth.getUser();
-
-      if (userError || !userData?.user) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
         Alert.alert('Error', 'User not logged in');
-        setLoading(false);
         return;
       }
-
-      const user = userData.user;
 
       const { error } = await supabase.from('foodcollection').insert([
         {
@@ -53,13 +103,9 @@ export default function AddFoodScreen({ navigation }) {
       if (error) throw error;
 
       Alert.alert('Success', 'Food shared successfully!');
-      setFoodname('');
-      setDescription('');
-      setAddress('');
-      setLocation(null);
       navigation.goBack();
-    } catch (error) {
-      Alert.alert('Error', error.message);
+    } catch (err) {
+      Alert.alert('Error', err.message);
     } finally {
       setLoading(false);
     }
@@ -83,42 +129,45 @@ export default function AddFoodScreen({ navigation }) {
         onChangeText={setDescription}
       />
 
-      <TextInput
-        placeholder="Address"
-        style={styles.input}
-        value={address}
-        onChangeText={setAddress}
+      <GooglePlacesAutocomplete
+        placeholder="Search Address"
+        fetchDetails
+        onPress={(data, details = null) => {
+          if (!details) return;
+          setAddress(data.description);
+          setLocation({
+            latitude: details.geometry.location.lat,
+            longitude: details.geometry.location.lng,
+          });
+        }}
+        query={{
+          key: 'YOUR_GOOGLE_MAPS_API_KEY',
+          language: 'en',
+        }}
+        styles={{ textInput: styles.input }}
       />
 
-      <Text style={styles.mapLabel}>
-        Tap on map to select pickup location
-      </Text>
+      <Pressable style={styles.locationBtn} onPress={getCurrentLocation}>
+        <Text style={{ color: '#fff', fontWeight: 'bold' }}>
+          Use My Current Location
+        </Text>
+      </Pressable>
 
       <MapView
         style={styles.map}
-        provider={PROVIDER_DEFAULT}   // ✅ Important Fix
-        initialRegion={{
-          latitude: 20.5937,
-          longitude: 78.9629,
-          latitudeDelta: 8,
-          longitudeDelta: 8,
-        }}
-        onPress={(e) => setLocation(e.nativeEvent.coordinate)}
+        region={
+          location
+            ? { ...location, latitudeDelta: 0.01, longitudeDelta: 0.01 }
+            : {
+                latitude: 20.5937,
+                longitude: 78.9629,
+                latitudeDelta: 5,
+                longitudeDelta: 5,
+              }
+        }
       >
-        {location && (
-          <Marker
-            coordinate={location}
-            title="Pickup Location"
-          />
-        )}
+        {location && <Marker coordinate={location} />}
       </MapView>
-
-      {location && (
-        <Text style={styles.coords}>
-          📍 Lat: {location.latitude.toFixed(6)} | Lng:{' '}
-          {location.longitude.toFixed(6)}
-        </Text>
-      )}
 
       <Pressable
         style={[styles.button, loading && { opacity: 0.6 }]}
@@ -134,6 +183,7 @@ export default function AddFoodScreen({ navigation }) {
     </ScrollView>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: {
@@ -153,20 +203,17 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 12,
   },
-  mapLabel: {
-    fontWeight: 'bold',
-    marginTop: 10,
-    marginBottom: 6,
+  locationBtn: {
+    backgroundColor: '#3b82f6',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 10,
   },
   map: {
     height: 220,
     width: '100%',
     borderRadius: 12,
-    marginBottom: 10,
-  },
-  coords: {
-    fontSize: 12,
-    color: '#555',
     marginBottom: 15,
   },
   button: {

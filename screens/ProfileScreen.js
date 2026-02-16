@@ -19,7 +19,7 @@ export default function ProfileScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
 
-  const { role, setRole } = useContext(RoleContext);
+  const { role, switchRole } = useContext(RoleContext);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -33,15 +33,15 @@ export default function ProfileScreen({ navigation }) {
 
         const { data, error } = await supabase
           .from('profiles')
-          .select('name, phone, role')
+          .select('name, phone')
           .eq('id', user.id)
           .single();
 
         if (error) throw error;
+
         if (data) {
           setName(data.name || '');
           setPhone(data.phone || '');
-          if (data.role && data.role !== role) setRole(data.role);
         }
       } catch (err) {
         console.log('Profile fetch error:', err.message);
@@ -62,13 +62,13 @@ export default function ProfileScreen({ navigation }) {
 
       const { error } = await supabase
         .from('profiles')
-        .upsert({ id: user.id, name, phone, role });
+        .update({ name, phone })
+        .eq('id', user.id);
 
-      if (error) Alert.alert('Error', error.message);
-      else {
-        Alert.alert('Success', 'Profile updated!');
-        setEditMode(false);
-      }
+      if (error) throw error;
+
+      Alert.alert('Success', 'Profile updated');
+      setEditMode(false);
     } catch (err) {
       Alert.alert('Error', err.message);
     } finally {
@@ -76,8 +76,9 @@ export default function ProfileScreen({ navigation }) {
     }
   };
 
-  const switchRole = () => {
-    setRole(prev => (prev === 'donor' ? 'receiver' : 'donor'));
+  const handleRoleSwitch = async () => {
+    const newRole = role === 'donor' ? 'receiver' : 'donor';
+    await switchRole(newRole);
   };
 
   const handleLogout = async () => {
@@ -87,7 +88,7 @@ export default function ProfileScreen({ navigation }) {
 
   if (loading) {
     return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+      <View style={styles.loader}>
         <ActivityIndicator size="large" color="#22c55e" />
       </View>
     );
@@ -98,7 +99,7 @@ export default function ProfileScreen({ navigation }) {
       <Text style={styles.title}>My Profile</Text>
 
       <Text style={styles.label}>Email</Text>
-      <Text style={styles.value}>{email || 'Not available'}</Text>
+      <Text style={styles.value}>{email}</Text>
 
       <Text style={styles.label}>Name</Text>
       {editMode ? (
@@ -109,17 +110,26 @@ export default function ProfileScreen({ navigation }) {
 
       <Text style={styles.label}>Phone</Text>
       {editMode ? (
-        <TextInput style={styles.input} value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+        <TextInput
+          style={styles.input}
+          value={phone}
+          onChangeText={setPhone}
+          keyboardType="phone-pad"
+        />
       ) : (
         <Text style={styles.value}>{phone || 'Not added'}</Text>
       )}
 
       <Text style={styles.label}>Current Role</Text>
-      <Text style={styles.value}>{role === 'donor' ? 'Donor 🟢' : 'Receiver 🔵'}</Text>
+      <Text style={styles.value}>
+        {role === 'donor' ? 'Donor 🟢' : 'Receiver 🔵'}
+      </Text>
 
       {editMode && (
-        <Pressable style={styles.switchButton} onPress={switchRole}>
-          <Text style={styles.switchText}>Switch to {role === 'donor' ? 'Receiver' : 'Donor'}</Text>
+        <Pressable style={styles.switchButton} onPress={handleRoleSwitch}>
+          <Text style={styles.switchText}>
+            Switch to {role === 'donor' ? 'Receiver' : 'Donor'}
+          </Text>
         </Pressable>
       )}
 
@@ -128,7 +138,10 @@ export default function ProfileScreen({ navigation }) {
           <Text style={styles.buttonText}>Save Changes</Text>
         </Pressable>
       ) : (
-        <Pressable style={[styles.button, { backgroundColor: '#3b82f6' }]} onPress={() => setEditMode(true)}>
+        <Pressable
+          style={[styles.button, { backgroundColor: '#3b82f6' }]}
+          onPress={() => setEditMode(true)}
+        >
           <Text style={styles.buttonText}>Edit Profile</Text>
         </Pressable>
       )}
@@ -142,6 +155,7 @@ export default function ProfileScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, backgroundColor: '#fff' },
+  loader: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   title: { fontSize: 24, fontWeight: 'bold', marginBottom: 20, color: '#22c55e' },
   label: { fontWeight: '600', marginTop: 15 },
   value: { marginTop: 5, fontSize: 16, color: '#374151' },

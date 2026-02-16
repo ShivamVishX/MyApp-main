@@ -1,22 +1,41 @@
-// screens/LoginScreen.js
 import React, { useState, useContext } from 'react';
-import { View, TextInput, Pressable, Text, Alert, StyleSheet, ActivityIndicator } from 'react-native';
+import {
+  View,
+  TextInput,
+  Pressable,
+  Text,
+  Alert,
+  StyleSheet,
+  ActivityIndicator,
+} from 'react-native';
 import { supabase } from '../supabaseClient';
 import { RoleContext } from '../context/RoleContext';
 
 export default function LoginScreen({ navigation }) {
-  const { setRole } = useContext(RoleContext);
+  const { switchRole, loading: roleLoading } = useContext(RoleContext);
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert('Error', 'Please enter email and password');
+      return;
+    }
+
     setLoading(true);
+
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      // 1️⃣ Login user
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
       if (error) throw error;
 
-      // Fetch role after login
+      // 2️⃣ Fetch role from profiles table
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('role')
@@ -25,9 +44,12 @@ export default function LoginScreen({ navigation }) {
 
       if (profileError) throw profileError;
 
-      if (profileData?.role) setRole(profileData.role);
+      // 3️⃣ Update role using context (SAFE METHOD)
+      if (profileData?.role) {
+        await switchRole(profileData.role);
+      }
 
-      // Navigate to TabsSwitcher
+      // 4️⃣ Navigate to Tabs
       navigation.replace('Tabs');
     } catch (err) {
       Alert.alert('Login Error', err.message);
@@ -35,6 +57,15 @@ export default function LoginScreen({ navigation }) {
       setLoading(false);
     }
   };
+
+  // Prevent UI flash while role is loading
+  if (roleLoading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -46,6 +77,7 @@ export default function LoginScreen({ navigation }) {
         keyboardType="email-address"
         autoCapitalize="none"
       />
+
       <TextInput
         style={styles.input}
         placeholder="Password"
@@ -55,20 +87,55 @@ export default function LoginScreen({ navigation }) {
       />
 
       <Pressable style={styles.button} onPress={handleLogin}>
-        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Login</Text>}
+        {loading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.buttonText}>Login</Text>
+        )}
       </Pressable>
 
       <Pressable onPress={() => navigation.navigate('Signup')}>
-        <Text style={styles.link}>Don't have an account? Sign up</Text>
+        <Text style={styles.link}>
+          Don't have an account? Sign up
+        </Text>
       </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', padding: 20, backgroundColor: '#fff' },
-  input: { borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 12, marginTop: 15 },
-  button: { backgroundColor: '#22c55e', padding: 14, borderRadius: 8, marginTop: 25, alignItems: 'center' },
-  buttonText: { color: '#fff', fontWeight: 'bold' },
-  link: { color: '#3b82f6', marginTop: 15, textAlign: 'center' },
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: 20,
+    backgroundColor: '#fff',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 15,
+  },
+  button: {
+    backgroundColor: '#22c55e',
+    padding: 14,
+    borderRadius: 8,
+    marginTop: 25,
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  link: {
+    color: '#3b82f6',
+    marginTop: 15,
+    textAlign: 'center',
+  },
 });
