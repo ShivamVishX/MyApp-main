@@ -19,7 +19,7 @@
         <!-- GOOGLE MAPS API KEY -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyCUXImSv10X4ilsvBJyyuzqKMn4UVXO6Qc" />
+            android:value="paste your google api key here i have deleted while uploading " />
 
         <activity
             android:name=".MainActivity"
