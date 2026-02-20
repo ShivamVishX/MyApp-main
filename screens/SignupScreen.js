@@ -37,7 +37,7 @@ export default function SignupScreen({ navigation }) {
       if (profileError) throw profileError;
 
       // 3️⃣ Update context
-      setRole(selectedRole);
+      switchrole(selectedRole);
 
       // 4️⃣ Navigate to tabs
       navigation.replace('Tabs');
