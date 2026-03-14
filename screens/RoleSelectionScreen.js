@@ -10,7 +10,7 @@ export default function RoleSelectionScreen() {
       .from('profiles')
       .upsert({ id: user.id, role });
 
-    // 🚫 no navigation here
+   
   };
 
   return (
