@@ -23,7 +23,7 @@ export default function AddFoodScreen({ navigation }) {
   const [location, setLocation] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  /* ================= LOCATION PERMISSION ================= */
+  /* LOCATION PERMISSION */
   const requestLocationPermission = async () => {
     if (Platform.OS !== 'android') return true;
 
@@ -39,7 +39,7 @@ export default function AddFoodScreen({ navigation }) {
     return granted === PermissionsAndroid.RESULTS.GRANTED;
   };
 
-  /* ================= GET CURRENT LOCATION ================= */
+  /* CURRENT LOCATION */
   const getCurrentLocation = async () => {
     const hasPermission = await requestLocationPermission();
     if (!hasPermission) {
@@ -65,15 +65,15 @@ export default function AddFoodScreen({ navigation }) {
       },
       {
         enableHighAccuracy: true,
-        timeout: 30000,              // 🔥 increased
+        timeout: 30000,              
         maximumAge: 0,
-        forceRequestLocation: true,  // 🔥 CRITICAL
-        showLocationDialog: true,    // 🔥 forces GPS ON popup
+        forceRequestLocation: true,  
+        showLocationDialog: true,    
       }
     );
   };
 
-  /* ================= SUBMIT ================= */
+  /*  SUBMIT*/
   const handleSubmit = async () => {
     if (!foodname || !description || !address || !location) {
       Alert.alert('Error', 'All fields including location are required!');

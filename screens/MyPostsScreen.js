@@ -10,7 +10,7 @@ export default function MyPostsScreen() {
     try {
       setLoading(true);
 
-      // ✅ Get the current logged-in user safely
+      // Get the current logged-in user safely
       const { data: userData, error: userError } = await supabase.auth.getUser();
       if (userError || !userData?.user) {
         Alert.alert('Error', 'User not logged in');
@@ -20,12 +20,12 @@ export default function MyPostsScreen() {
 
       const user = userData.user;
 
-      // ✅ Fetch only posts that belong to the user
+      //  Fetch only posts that belong to the user
       const { data, error } = await supabase
         .from('foodcollection')
         .select('*')
         .eq('posted_by', user.id)
-        .order('id', { ascending: false }); // optional: show latest first
+        .order('id', { ascending: false }); 
 
       if (error) throw error;
 

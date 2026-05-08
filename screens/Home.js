@@ -13,9 +13,9 @@ import {
 import Geolocation from 'react-native-geolocation-service';
 import { supabase } from '../supabaseClient';
 
-/* ===============================
+/*
    Distance Calculator (KM)
-================================ */
+*/
 const getDistanceInKm = (lat1, lon1, lat2, lon2) => {
   const toRad = (value) => (value * Math.PI) / 180;
   const R = 6371;
@@ -39,9 +39,9 @@ export default function HomeScreen({ navigation }) {
   const [userLocation, setUserLocation] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  /* ===============================
+  /*
      Get User Location
-  ================================= */
+ */
   const getUserLocation = async () => {
     if (Platform.OS === 'android') {
       const granted = await PermissionsAndroid.request(
@@ -73,9 +73,9 @@ export default function HomeScreen({ navigation }) {
     );
   };
 
-  /* ===============================
+  /*
      Fetch Food (30 KM Radius)
-  ================================= */
+   */
   const fetchFood = async () => {
     if (!userLocation) return;
 
@@ -102,18 +102,18 @@ export default function HomeScreen({ navigation }) {
     setFoodList(nearbyFood);
   };
 
-  /* ===============================
+  /* 
      Pull to Refresh
-  ================================= */
+   */
   const handleRefresh = async () => {
     setRefreshing(true);
     await fetchFood();
     setRefreshing(false);
   };
 
-  /* ===============================
+  /* 
      Effects
-  ================================= */
+  */
   useEffect(() => {
     getUserLocation();
   }, []);
@@ -135,9 +135,9 @@ export default function HomeScreen({ navigation }) {
     return () => clearInterval(interval);
   }, [userLocation]);
 
-  /* ===============================
+  /*
      UI
-  ================================= */
+   */
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -199,9 +199,9 @@ export default function HomeScreen({ navigation }) {
   );
 }
 
-/* ===============================
+/*
    Styles
-================================ */
+ */
 const styles = StyleSheet.create({
   container: {
     flex: 1,

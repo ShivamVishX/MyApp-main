@@ -7,6 +7,7 @@ import {
   Alert,
   StyleSheet,
   ActivityIndicator,
+  ImageBackground,
 } from 'react-native';
 import { supabase } from '../supabaseClient';
 import { RoleContext } from '../context/RoleContext';
@@ -30,7 +31,6 @@ export default function SignupScreen({ navigation }) {
     setLoading(true);
 
     try {
-      // 1️⃣ Create user
       const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
         password,
@@ -40,11 +40,8 @@ export default function SignupScreen({ navigation }) {
 
       const user = data.user;
 
-      if (!user) {
-        throw new Error('User not created.');
-      }
+      if (!user) throw new Error('User not created.');
 
-      // 2️⃣ Insert profile
       const { error: profileError } = await supabase
         .from('profiles')
         .insert([
@@ -58,10 +55,7 @@ export default function SignupScreen({ navigation }) {
 
       if (profileError) throw profileError;
 
-      // 3️⃣ Update role in context
       await switchRole(selectedRole);
-
-      // 4️⃣ Navigate to Tabs
       navigation.replace('Tabs');
 
     } catch (err) {
@@ -80,84 +74,125 @@ export default function SignupScreen({ navigation }) {
   }
 
   return (
-    <View style={styles.container}>
-      
-      <TextInput
-        style={styles.input}
-        placeholder="Name"
-        value={name}
-        onChangeText={setName}
-      />
+    <ImageBackground
+      source={require('../components/images/loginimage.jpg')}
+      style={styles.background}
+      resizeMode="cover"
+    >
+      <View style={styles.overlay}>
+        <View style={styles.container}>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Phone"
-        value={phone}
-        onChangeText={setPhone}
-        keyboardType="phone-pad"
-      />
+          <View style={styles.card}>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
-        keyboardType="email-address"
-      />
+            <Text style={styles.title}>Create Account</Text>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
+            <TextInput
+              style={styles.input}
+              placeholder="Name"
+              placeholderTextColor="#999"
+              value={name}
+              onChangeText={setName}
+            />
 
-      {/* Role Selection */}
-      <View style={styles.roleContainer}>
+            <TextInput
+              style={styles.input}
+              placeholder="Phone"
+              placeholderTextColor="#999"
+              value={phone}
+              onChangeText={setPhone}
+              keyboardType="phone-pad"
+            />
 
-        <Pressable
-          style={[
-            styles.roleButton,
-            selectedRole === 'donor' && styles.selectedRole,
-          ]}
-          onPress={() => setSelectedRole('donor')}
-        >
-          <Text style={styles.roleText}>Donor</Text>
-        </Pressable>
+            <TextInput
+              style={styles.input}
+              placeholder="Email"
+              placeholderTextColor="#999"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
 
-        <Pressable
-          style={[
-            styles.roleButton,
-            selectedRole === 'receiver' && styles.selectedRole,
-          ]}
-          onPress={() => setSelectedRole('receiver')}
-        >
-          <Text style={styles.roleText}>Receiver</Text>
-        </Pressable>
+            <TextInput
+              style={styles.input}
+              placeholder="Password"
+              placeholderTextColor="#999"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+            />
 
+            {/* Role Selection */}
+            <View style={styles.roleContainer}>
+
+              <Pressable
+                style={[
+                  styles.roleButton,
+                  selectedRole === 'donor' && styles.selectedRole,
+                ]}
+                onPress={() => setSelectedRole('donor')}
+              >
+                <Text
+                  style={[
+                    styles.roleText,
+                    selectedRole === 'donor' && styles.selectedRoleText,
+                  ]}
+                >
+                  Donor
+                </Text>
+              </Pressable>
+
+              <Pressable
+                style={[
+                  styles.roleButton,
+                  selectedRole === 'receiver' && styles.selectedRole,
+                ]}
+                onPress={() => setSelectedRole('receiver')}
+              >
+                <Text
+                  style={[
+                    styles.roleText,
+                    selectedRole === 'receiver' && styles.selectedRoleText,
+                  ]}
+                >
+                  Receiver
+                </Text>
+              </Pressable>
+
+            </View>
+
+            <Pressable style={styles.button} onPress={handleSignup}>
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.buttonText}>Sign Up</Text>
+              )}
+            </Pressable>
+
+            <Pressable onPress={() => navigation.navigate('Login')}>
+              <Text style={styles.link}>
+                Already have an account? Login
+              </Text>
+            </Pressable>
+
+          </View>
+
+        </View>
       </View>
-
-      <Pressable style={styles.button} onPress={handleSignup}>
-        {loading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.buttonText}>Sign Up</Text>
-        )}
-      </Pressable>
-
-      <Pressable onPress={() => navigation.navigate('Login')}>
-        <Text style={styles.link}>
-          Already have an account? Login
-        </Text>
-      </Pressable>
-
-    </View>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
+  background: {
+    flex: 1,
+  },
+
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+
   center: {
     flex: 1,
     justifyContent: 'center',
@@ -168,28 +203,46 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     padding: 20,
-    backgroundColor: '#fff',
+    backgroundColor: 'transparent',
+  },
+
+  card: {
+    backgroundColor: 'rgba(237, 239, 239, 0.95)',
+    padding: 20,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+
+  title: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    textAlign: 'center',
+    color: '#22c55e',
   },
 
   input: {
     borderWidth: 1,
     borderColor: '#ddd',
-    borderRadius: 8,
+    borderRadius: 10,
     padding: 12,
-    marginTop: 15,
+    marginTop: 12,
+    backgroundColor: '#fff',
   },
 
   roleContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
     marginTop: 15,
   },
 
   roleButton: {
-    padding: 12,
-    borderRadius: 8,
-    backgroundColor: '#ddd',
     flex: 1,
+    padding: 12,
+    borderRadius: 10,
+    backgroundColor: '#ddd',
     marginHorizontal: 5,
     alignItems: 'center',
   },
@@ -199,15 +252,19 @@ const styles = StyleSheet.create({
   },
 
   roleText: {
-    color: '#000',
     fontWeight: 'bold',
+    color: '#000',
+  },
+
+  selectedRoleText: {
+    color: '#fff',
   },
 
   button: {
     backgroundColor: '#22c55e',
     padding: 14,
-    borderRadius: 8,
-    marginTop: 25,
+    borderRadius: 10,
+    marginTop: 20,
     alignItems: 'center',
   },
 
